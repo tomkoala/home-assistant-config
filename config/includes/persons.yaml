@@ -1,0 +1,25 @@
+#-
+#
+#  _ __   ___ _ __ ___  ___  _ __  ___
+# | '_ \ / _ \ '__/ __|/ _ \| '_ \/ __|
+# | |_) |  __/ |  \__ \ (_) | | | \__ \
+# | .__/ \___|_|  |___/\___/|_| |_|___/
+# |_|
+#
+#-
+
+- name: hass
+  id: hass
+  user_id: a11bcb5b93d34389854777375013ac43
+- name: Thomas
+  id: thomas
+  user_id: fea00b9494804bdfa3a542b255a8b97b
+  device_trackers:
+    # iPhone X
+    - device_tracker.iphone_12_tom # from iOS app
+    - device_tracker.iphone_12_tom_arp
+- name: Nadège
+  id: nadege
+  user_id: 0d8b36da29974dec9a30f767931bde2c
+  device_trackers:
+    - device_tracker.iphone_nadi_arp

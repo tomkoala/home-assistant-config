@@ -1,0 +1,14 @@
+
+automation:
+
+  - id: function_security_mode_presence
+    alias: 'Function - Arriving - Home mode notification'
+    trigger:
+      platform: state
+      entity_id: group.person_family
+      from: 'not_home'
+      to: 'home'
+    action:
+      - service: notify.all
+        data:
+          message: Mode présence activé

@@ -1,0 +1,41 @@
+#-
+#  _                          _    _ _
+# | |__   ___  _ __ ___   ___| | _(_) |_
+# | '_ \ / _ \| '_ ` _ \ / _ \ |/ / | __|
+# | | | | (_) | | | | | |  __/   <| | |_
+# |_| |_|\___/|_| |_| |_|\___|_|\_\_|\__|
+#
+#
+#- 
+name: HASS Bridge
+filter:
+  exclude_domains:
+    - automation
+    - binary_sensor
+    - device_tracker
+    - input_boolean
+    - light
+    - media_player
+    - persistent_notification
+    - person
+    - script
+    - sensor
+    - sun
+    - switch
+    - zone
+  include_domains:
+    - light
+  include_entity_globs:
+    - binary_sensor.*_occupancy
+  include_entities:
+    - media_player.tv
+    - alarm_control_panel.verisure_alarm
+    - binary_sensor.doorcontact_hall_contact
+entity_config:
+  media_player.tv:
+    name: TV
+    feature_list:
+      - feature: on_off
+      - feature: play_pause
+      - feature: play_stop
+      - feature: toggle_mute

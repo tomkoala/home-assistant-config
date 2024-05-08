@@ -1,0 +1,7 @@
+### Bathroom ###
+
+template:
+  - sensor:
+    - name: 'Thermostat Bathroom temperature'
+      unit_of_measurement: '°C'
+      state: "{{ state_attr('climate.radiatorthermostat_bathroom', 'current_temperature') }}"

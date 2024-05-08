@@ -1,0 +1,31 @@
+### Integrations - RESTful command  ###
+
+# Description: manages RESTful commands as services in Home Assistant
+#              Services can then be called from a script or in automation.
+#
+#
+
+rest_command:
+  # Example configuration.yaml entry
+  my_request:
+    url: https://slack.com/api/users.profile.set
+    method: POST
+    headers:
+      #authorization: !secret rest_headers_secret
+      accept: "application/json, text/html"
+      user-agent: 'Mozilla/5.0 {{ useragent }}'
+    payload: '{"profile":{"status_text": "{{ status }}","status_emoji": "{{ emoji }}"}}'
+    content_type:  'application/json; charset=utf-8'
+    verify_ssl: true
+
+  ################################################################################
+  # Airsend 2 command - Set State
+  airsend_command_setstate:
+    url: !secret airsend_ws_url
+    method: POST
+    headers:
+      authorization: !secret airsend_ws_http_headers_auth
+      accept: "application/json"
+      user-agent: 'Mozilla/5.0 {{ useragent }}'
+    payload: '{"wait":0,"channel":{"id": {{ id }},"source": {{ source }} },"thingnotes":{"notes":[{"method":"PUT","type":"STATE","value": "{{ command }}" }]}}'
+    content_type: 'application/json; charset=utf-8'

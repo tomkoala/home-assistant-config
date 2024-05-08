@@ -1,0 +1,7 @@
+### Outdoor ###
+
+template:
+  - sensor:
+    - name: 'Outside temperature'
+      unit_of_measurement: '°C'
+      state: "{{ state_attr('weather.marcy_l_etoile', 'temperature') }}"

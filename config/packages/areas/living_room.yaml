@@ -1,0 +1,44 @@
+### Living Room ###
+
+automation:
+  # Turn on the living room lights when using the left/right arrows of Tradfri remote
+  - id: area_living_room_all_lights_control
+    alias: 'Area - Living Room - Turn on all lights with Remote control'
+    mode: parallel
+    trigger:
+      - platform: mqtt
+        topic: 'zigbee2mqtt/Remote-Lounge-Living'
+    condition:
+      - condition: state
+        entity_id: light.bulb_sofa_living
+        state: 'off'
+      - condition: template
+        value_template: "{{ trigger.payload_json.action in ['arrow_left_click','arrow_right_click'] }}" # add more button-actions here
+    action:
+      - choose:
+        - conditions: "{{ trigger.payload_json.action == 'arrow_left_click' }}"
+          sequence:
+            - service: light.turn_on
+              entity_id: light.living_lamps_dio
+        - conditions: "{{ trigger.payload_json.action == 'arrow_right_click' }}"
+          sequence:
+            - service: light.turn_off
+              entity_id: light.living_lamps_dio
+        # ... more conditions for other button-actions
+
+  - id: area_living_room_turn_off_tv_inactivity
+    alias: 'Area - Living Room - Turn off TV after 120 minutes of inactivity'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_living_occupancy
+      to: 'off'
+      for: '02:00:00'
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: media_player.tv
+            state: 'off'
+    action:
+      - service: media_player.turn_off
+        entity_id: media_player.tv

@@ -1,0 +1,75 @@
+automation:
+
+  - id: function_leaving_mode_away
+    alias: 'Function - Leaving - Away mode notification'
+    trigger:
+      platform: state
+      entity_id: group.person_family
+      from: 'home'
+      to: 'not_home'
+    condition:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: 'off'
+    action:
+      # Close all lights
+      #- service: light.turn_off
+      #  entity_id: group.all_lights
+      - service: notify.all
+        data:
+          message: Mode absence
+
+  - id: function_leaving_ask_to_enable alarm
+    alias: 'Function - Leaving - Ask to enable alarm if no one at home'
+    trigger:
+      platform: state
+      entity_id: group.person_family
+      from: 'home'
+      to: 'not_home'
+      for: '00:05:00'
+    condition:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: alarm_control_panel.verisure_alarm
+          state: armed_away
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: 'off'
+    action:
+      - service: notify.all
+        data:
+          message: No one is home but alarm is disabled, activate it?
+          title: Sécurité
+
+  - id: function_leaving_ask_to_turn_off_everything
+    alias: 'Function - Leaving - Ask to turn off everything'
+    initial_state: 'on'
+    trigger:
+      - platform: state
+        entity_id: group.person_family
+        from: 'home'
+        to: 'not_home'
+    condition:
+      - condition: state
+        entity_id:
+          - binary_sensor.anything_on
+        state: 'on'
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: 'off'
+    action:
+      - delay: '00:05:00' # something still needs to be on in 5 min
+      - condition: state
+        entity_id: binary_sensor.no_one_home
+        state: 'on'
+      - service: notify.all
+        data:
+          message: 'No one is home, turn off everything?'
+          data:
+            actions:
+              - action: turn_off_everything
+                title: Turn off everything
+                activationMode: background
+                authenticationRequired: false
+                destructive: true

@@ -1,0 +1,48 @@
+### Integrations - Alexa Media Player ###
+
+# Description: several helper scripts for Echo Dot device to ease the way to :
+#  - call the TTS feature with a specific message
+#  - play a specific sound
+#
+# Requires: 
+#  - Alexa Media Player (HACS)
+#    https://github.com/custom-components/alexa_media_player
+#
+
+script:
+  echo_dot_welcome_message:
+    alias: 'Echo Dot - Welcome message'
+    sequence:
+      - service: script.echo_dot_tts
+        data:
+          device_echo: echo_dot_bureau
+          message: 'Bienvenue!' 
+          volume: 0.1
+
+  echo_dot_tts:
+    alias: 'Echo Dot - Text-To-Speech (TTS)'
+    sequence:
+      - service: media_player.volume_set
+        data:
+          volume_level: '{{ volume }}'
+          entity_id: 'media_player.{{ device_echo }}'
+      - service: notify.alexa_media
+        data:
+          data:
+            type: tts
+          target: 'media_player.{{ device_echo }}'
+          message: '{{ message }}'
+    icon: mdi:clipboard-text-play-outline
+            
+  echo_dot_play_sound:
+    alias: 'Echo Dot - Play sound'
+    sequence: 
+      - service: media_player.volume_set
+        data:
+          volume_level: '{{ volume }}'
+          entity_id: 'media_player.{{ device_echo }}'
+      - service: media_player.play_media
+        data:
+          media_content_type: sound
+          media_content_id: '{{ content }}'
+          entity_id: 'media_player.{{ device_echo }}'

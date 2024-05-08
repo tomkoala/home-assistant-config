@@ -1,0 +1,10 @@
+{% set last_changed = states.binary_sensor.doorcontact_hall_contact.last_updated %}
+{% if last_changed < today_at() - timedelta(days=6) %}
+  More than a week ago
+{% elif last_changed < today_at() - timedelta(days=1) %}
+  {{ last_changed.strftime('%A at %H:%M') }}
+{% elif last_changed < today_at() %}
+  {{ last_changed.strftime('Yesterday at %H:%M') }}
+{% else %}
+  {{ last_changed.strftime('Today at %H:%M') }} ({{ relative_time(last_changed) }} ago)
+{% endif %}

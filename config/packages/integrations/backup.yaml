@@ -1,0 +1,35 @@
+### Integrations - Backup ###
+
+# Description: perform automatic backups at night
+#
+# Requires: 
+#  - Backup
+#    https://www.home-assistant.io/integrations/backup/
+#
+
+automation:
+  - alias: 'Backup Home Assistant every night at 3 AM'
+    trigger:
+      platform: time
+      at: '03:00:00'
+    action:
+      alias: 'Create backup now'
+      service: backup.create
+
+#command_line:
+#  - switch:
+#      name: Purge HA Backups
+#      unique_id: switch.purge_backups
+#      icon_template: mdi:trash-can
+      # go to backup direcotory, list files by date, filter result list to hide the first 7 results (show from nr.8) and remove remaining
+#      command_on: cd /config/backups/ && ls -A1t | tail -n +8 | xargs rm -v
+
+switch:
+  - platform: command_line
+    switches:
+      purge_backups:
+        friendly_name: Purge HA-config Backups
+        unique_id: switch.purge_backups
+        icon_template: mdi:trash-can
+        # go to backup directory, list files by date, filter result list to hide the first 7 results (show from nr.8) and remove remaining
+        command_on: cd /config/backups/ && ls -A1t | tail -n +8 | xargs rm -v

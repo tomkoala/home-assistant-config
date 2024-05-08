@@ -1,0 +1,14 @@
+#-
+#
+#  _______  _ __   ___  ___
+# |_  / _ \| '_ \ / _ \/ __|
+#  / / (_) | | | |  __/\__ \
+# /___\___/|_| |_|\___||___/
+#
+#
+#-
+- name: Home
+  latitude: !secret latitude_home
+  longitude: !secret longitude_home
+  radius: 100
+  icon: mdi:home

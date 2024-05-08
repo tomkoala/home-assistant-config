@@ -1,0 +1,321 @@
+### Features - Security ###
+
+# Description: a set of automations and scripts to manage the alarm and overall house security when away
+#  - management of all alarm panel modes (armed, pending, triggered, disarmed) 
+#  - notifications on HA mobile App
+#  - local notifications with Echo-Dot device 
+#  - light flashing when alarm is triggered
+#
+# Requires:
+#  - Some motion sensors (at least 2)
+#  - A plugable Siren
+#  - A Echo Dot media player configured in HA
+#
+
+## Sensors ##
+
+template:
+  - binary_sensor:
+    # A combined motion sensor capturing inputs from at least 2 sensors and avoiding false positive
+    - name : 'Motion combined occupancy'
+      device_class: motion
+      state: >
+        {%- set counter = namespace(total=0) %}
+        {%- for sensor in expand('binary_sensor.all_motion_sensors') | map(attribute='last_changed') %}
+          {%- if now() - sensor < timedelta(seconds=180) %}
+            {%- set counter.total = counter.total + 1 %}
+          {%- endif %}
+        {%- endfor %}
+        {{ iif(counter.total > 1, true, false) }}
+
+## Inputs ##
+
+input_boolean:
+  vacation_mode:
+    name: Vacation Mode
+    icon: mdi:beach
+
+  away_mode:
+    name: Away
+    icon: mdi:home-export-outline
+
+  guest_mode:
+    name: Guest mode
+    icon: mdi:human-male-female
+
+input_datetime:
+  alarm_auto_arm:
+    name: 'Alarm Auto-Arm'
+    icon: mdi:clock-outline
+    has_date: false
+    has_time: true
+
+  alarm_auto_disarm:
+    name: 'Alarm Auto-Disarm'
+    icon: mdi:clock-outline
+    has_date: false
+    has_time: true
+
+## Groups ##
+
+binary_sensor:
+  - platform: group
+    name: 'Security Motion Sensors'
+    entities:
+      - binary_sensor.motion_hall_occupancy
+      - binary_sensor.motion_living_occupancy
+
+## Automations ##
+
+automation:
+
+  # Notify when the entry door is open and no one is at home
+  - id: function_security_door_open
+    alias: 'Function - Security - Open Door'
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.doorcontact_hall_contact
+        from: 'off'
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: group.person_family
+        state: not_home
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+    action:
+      - service: notify.all
+        data:
+          message: Porte d'entrée ouverte!
+          title: Sécurité
+
+  # Notify when a PIR has detected a motion during absence
+  - id: function_security_motion_detected
+    alias: 'Function - Security - Motion detected'
+    trigger:
+      - platform: state
+        entity_id: 
+          - binary_sensor.security_motion_sensors
+        from: 'off'
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: group.person_family
+        state: not_home
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+    action:
+      - service: notify.all
+        data:
+          message: Alerte mouvement detecté par
+            '{{ expand('binary_sensor.security_motion_sensors')
+             |selectattr('state', 'eq', 'on') 
+             |map(attribute='name') |join(', ') }}'
+          title: Sécurité
+
+  # Send notification when the door is opened more than 2 minutes
+  - id: function_security_door_open_still
+    alias: 'Function - Security - Door opened more than 2 minutes'
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.doorcontact_hall_contact
+        from: 'off'
+        to: 'on'
+        for: '00:02:00'
+    condition: []
+    action:
+      - service: notify.all
+        data:
+          message: La porte d'entrée est ouverte depuis plus 2 minutes!
+          title: Sécurité
+
+### Home Alarm state machine
+
+  # Set Alarm to On when Away mode enabled
+  - id: function_security_arm_away
+    alias: 'Function - Security - Set Alarm to On when Away mode enabled'
+    trigger:
+      - platform: state
+        entity_id: input_boolean.away_mode
+        to: 'on'
+    action:
+      - service: alarm_control_panel.alarm_arm_away
+        entity_id: alarm_control_panel.home_alarm
+      - service: notify.all
+        data:
+          message: Mode absence activé
+
+  # Notify when alarm is armed
+  - id: function_security_alarm_armed
+    alias: 'Function - Security - Alarm Armed'
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.home_alarm
+        #from: 'disarmed'
+        to:
+          - 'armed_away'
+          - 'armed_vacation'
+    action:
+      # Send an alert to all users
+      - service: script.echo_dot_notification_alarm_armed
+
+  # Notify when alarm is disarmed
+  - id: function_security_alarm_disarmed
+    alias: 'Function - Security - Alarm Disarmed'
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.home_alarm
+        from:
+          - 'armed_away'
+          - 'armed_vacation'
+        to: 'disarmed'
+    action:
+      # Send an alert to all users
+      - service: script.echo_dot_notification_alarm_disarmed
+      - service: notify.all
+        data:
+          message: L'alarme a été désactivée
+
+  # Trigger the alarm when armed and if motion detected by at least 2 PIR sensors or door opened
+  - id: function_security_alarm_trigger
+    alias: 'Function - Security - Trigger alarm when presence detected'
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_combined_occupancy
+        from: 'off'
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.doorcontact_hall_contact
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.all_motion_sensors
+        to: 'on'
+        for: '00:03:00'
+    condition:
+      condition: or
+      conditions:
+      - condition: state
+        entity_id: alarm_control_panel.home_alarm
+        state: armed_away
+      - condition: state
+        entity_id: alarm_control_panel.home_alarm
+        state: armed_vacation
+    action:
+      - service: alarm_control_panel.alarm_trigger
+        entity_id: alarm_control_panel.home_alarm
+
+  # Notify when alarm goes to Pending state
+  - id: function_security_alarm_pending
+    alias: 'Function - Security - Alarm Pending'
+    trigger:
+    - platform: state
+      entity_id: alarm_control_panel.home_alarm
+      to: pending
+    action:
+      - delay: 00:00:05
+      - service: notify.all
+        data:
+          message: L'alarme est en attente - mouvement detecté!
+
+  # Enable siren and notify when alarm is finally triggered
+  - id: function_security_alarm_triggered
+    alias: 'Function - Security - Alarm Triggered'
+    trigger:
+    - platform: state
+      entity_id: alarm_control_panel.home_alarm
+      to: triggered
+    action:
+      - service: notify.all
+        data:
+          message: L'alarme est déclenchée - sirène activée!
+      - delay: 00:00:05
+      - service: script.echo_dot_play_alarm_sound
+      - service: switch.turn_on
+        entity_id: switch.siren
+
+  # Turn off the siren after 2 minutes
+  - id: function_security_stop_siren
+    alias: 'Function - Security - Turn off siren after 2 minutes'
+    trigger:
+      platform: state
+      entity_id: switch.siren
+      to: 'on'
+      for:
+        hours: 0
+        minutes: 1
+        seconds: 30
+    action:
+      - service: switch.turn_off
+        entity_id: switch.siren
+
+## Scripts ##
+
+script:
+  # Notify Echo Dot when alarm is armed
+  echo_dot_notification_alarm_armed:
+    alias: 'Echo Dot - Notification - Alarm Armed'
+    sequence:
+      - service: script.echo_dot_tts
+        data:
+          device_echo: echo_dot_bureau
+          message: L'alarme a été activée
+          volume: 0.5
+
+  # Notify Echo Dot when alarm is disarmed
+  echo_dot_notification_alarm_disarmed:
+    alias: 'Echo Dot - Notification - Alarm Disarmed'
+    sequence:
+      - service: script.echo_dot_tts
+        data:
+          device_echo: echo_dot_bureau
+          message: L'alarme a été désactivée
+          volume: 0.5
+
+  echo_dot_play_alarm_sound:
+    alias: 'Echo Dot - Play sound - Alarm'
+    sequence: 
+      - service: script.echo_dot_play_sound
+        data:
+          device_echo: echo_dot_bureau
+          content: amzn_sfx_scifi_alarm_04
+          # Set Volume to minimum for testing
+          volume: 1.0
+
+  siren_turn_on:
+    alias: 'Siren - Turn on'
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.siren
+    mode: single
+
+  flash_light:
+    mode: restart
+    sequence:
+      - service: light.turn_on
+        target:
+          entity_id: "light.{{ light }}"
+      - alias: 'Cycle light count times'
+        repeat:
+          count: "{{ count|int * 2 - 1 }}"
+          sequence:
+            - delay: 2
+            - service: light.toggle
+              data:
+                brightness: 255
+                effect: blink
+                flash: short
+              target:
+                entity_id: "light.{{ light }}"
+
+  flash_light_living:
+    alias: 'Flash Bulb 10 times'
+    sequence:
+      - service: script.flash_light
+        data:
+          light: bulb_sofa_living
+          count: 10

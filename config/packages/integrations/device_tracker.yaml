@@ -1,0 +1,38 @@
+### Integrations - Device Trackers ###
+
+# Description: track devices (e.g. smartphones) in Home Assistant
+#
+# Requires: 
+#  - Iphone Device Tracker
+#    https://github.com/mudape/iphonedetect
+#
+#  For other device trackers visit 
+#    https://www.home-assistant.io/integrations/#presence-detection
+#
+
+device_tracker:
+  - platform: iphonedetect
+    consider_home: 60 # Seconds to wait till marking someone as not home after not being seen
+    scan_interval: 30 # Seconds between each scan for new devices.
+    new_device_defaults:
+      track_new_devices: true
+    hosts:
+      iphone_12_tom_arp: 192.168.1.12
+      iphone_nadi_arp: 192.168.1.14
+
+#  - platform: nmap_tracker
+#    hosts: # include the IP address(es) to monitor
+#    - 192.168.1.1
+#    - 192.168.1.12
+#    - 192.168.1.13
+#    - 192.168.1.14
+#    - 192.168.1.21
+#    - 192.168.1.22
+#    #hosts: 192.168.1.1-200 # to monitor a range of IP addresses 
+#    home_interval: 1 # minute(s)
+#    exclude: # excluse the following P address(es)
+#     - 192.168.1.13
+#    interval_seconds: 60 # Seconds between each scan for new devices.
+#    consider_home: 180 # Seconds to wait till marking someone as not home after not being seen
+#    new_device_defaults: 
+#      track_new_devices: true

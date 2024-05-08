@@ -1,0 +1,100 @@
+### Integrations - System Monitor ###
+
+# Provides system monitoring and info for the RPI host
+#  
+# Requires:
+#  - System Monitor
+#    https://www.home-assistant.io/integrations/systemmonitor/
+#  - Monitor Docker (HACS)
+#    https://github.com/ualex73/monitor_docker
+#  - Uptime
+#    https://www.home-assistant.io/integrations/uptime
+#
+
+sensor:  
+  - platform: systemmonitor
+    resources:
+      - type: disk_use_percent
+        arg: /
+      - type: memory_use_percent
+      - type: processor_use
+      - type: last_boot
+      - type: network_in
+        arg: wlan0
+      - type: network_out
+        arg: wlan0
+      - type: ipv4_address
+        arg: wlan0
+
+  - platform: uptime
+    name: Uptime
+    scan_interval: 60
+             
+  - platform: command_line
+    name: CPU Temp
+    scan_interval: 60
+    unit_of_measurement: °C
+    command: >-
+      if [ -e /sys/class/thermal/thermal_zone0/temp ]
+        then cat /sys/class/thermal/thermal_zone0/temp
+      fi
+    value_template: >-
+      {% if value != '' %}
+        {{ value | multiply(0.001) | round }}
+      {% else %}
+        unknown
+      {% endif %} 
+
+monitor_docker:
+  - name: Docker
+    containers:
+      - airsend-ws
+      - homeassistant
+      - mosquitto
+      - portainer
+      - zwave-js-ui
+    rename:
+      homeassistant: Home Assistant
+      airsend-ws: Airsend WS
+      mosquitto: Mosquitto
+      portainer: Portainer
+      zwave-js-ui: Zwave JS UI
+    monitored_conditions:
+      - version
+      - containers_running
+      - containers_total
+      - state
+      - status
+      - memory
+
+## Automations ##
+
+automation:
+
+  - id: function_security_monitor_MQTT
+    alias: 'Function - System - High CPU usage alert'
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.rpi_cpu_usage
+      above: 70
+      for:
+        hours: 4
+    action:
+      service: notify.admin
+      data:
+        title: "System"
+        message: "CPU usage has been above 70% for 4 hours! ⚠️🖥"
+
+  - id: function_system_monitor_MQTT_watchdog
+    alias: 'Function - System - MQTT sensor monitoring'
+    description: Check whether we are receiving messages over MQTT from my other HA instance.
+    trigger:
+      platform: time_pattern
+      minutes: "/5"
+    condition: "{{ (as_timestamp(now()) - as_timestamp(states.sensor.temperature_hall_temperature.last_changed)) > 20 * 60 }}"
+    action:
+      - service: notify.admin
+        data:
+          title: "System"
+          message: "Not receiving MQTT updates, maybe reboot the other HA instance! ⚠️"
+      - delay: "03:00:00"  # don't tell me again for three hours
