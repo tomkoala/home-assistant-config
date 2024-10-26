@@ -5,7 +5,7 @@ BASE_DIR:=$(shell pwd)
 DEPLOY_DIR=$(BASE_DIR)/deploy
 
 DEST_VOL:=/mnt/usbdrive/docker
-INSTALL_HOST=pi@domopi
+INSTALL_HOST=pi@192.168.1.20
 INSTALL_DIR=$(DEST_VOL)/volumes/homeassistant
 
 TMPID:=$(shell bash -c "echo $$$$")

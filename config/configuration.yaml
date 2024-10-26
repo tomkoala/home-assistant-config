@@ -12,6 +12,13 @@ frontend:
 tts:
   - platform: google_translate
 
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.1
+    - ::1
+  #base_url: https://koalant.ddns.net
+
 # Devices
 binary_sensor: !include includes/binary_sensors.yaml
 cover: !include includes/covers.yaml
